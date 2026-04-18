@@ -105,6 +105,11 @@ func (s *Server) Authorize(c *gin.Context) {
 func (s *Server) FetchProtectedResource(c *gin.Context) {
 	accessToken := "very-unsafe-access-token" // after /token store this somewhere safe.
 	// userA : accesstoken - then access the resource.
+	// todo: checkk if access token is expired for userA
+	// todo: using refresh token , fetch the access token then make
+	// call to protected resource - using basic auth
+	// Header: Basic base64(clientId+clientSecret)
+	// Body: { grant_type: 'refresh_token', refresh_token: refreshToken}
 	// create new http request
 	req, _ := http.NewRequest("GET", "http://localhost:8080/resource", nil)
 	req.Header.Set("Authorization", "Bearer "+accessToken)

@@ -55,9 +55,24 @@ func (s *Server) Token(c *gin.Context) {
 	}).Info("Received token request")
 
 	// grant type check: which oauth flow in use
-	if grantType != "authorization_code" {
+	if grantType != "authorization_code" && grantType != "refresh_token" {
 		c.String(401, "Invalid grant type")
 		return
+	}
+
+	// if grantType is refresh token then
+	// a. invalidate the previous access token - like box.
+	// b. issue a new refresh token and access token.
+	if grantType == "refresh_token" {
+		// todo tusing the refresh token , generate a new access token and refresh token
+		// todo Authorization: 'Basic base64(client.clientId + clientSecret)
+		// todo cross validate the id and secret which we get in base64 format.
+		c.JSON(200, gin.H{
+			"access_token":  "very-unsafe-access-token-2",
+			"expires_in":    3600,
+			"refresh_token": "refresh_12345234234234234234",
+			"token_type":    "Bearer",
+		})
 	}
 
 	// code check: proof that user authenticated earlier.
@@ -74,8 +89,10 @@ func (s *Server) Token(c *gin.Context) {
 	}
 	// success
 	c.JSON(200, gin.H{
-		"access_token": "very-unsafe-access-token",
-		"expires_in":   3600,
+		"access_token":  "very-unsafe-access-token",
+		"expires_in":    3600,
+		"refresh_token": "refresh_12345",
+		"token_type":    "Bearer",
 	})
 
 }
