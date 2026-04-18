@@ -9,11 +9,12 @@ import (
 
 // App config
 type Config struct {
-	ClientId      string
-	ClientSecret  string
-	RedirectURI   string
-	AuthServerURL string
-	Scope         string
+	ClientId           string
+	ClientSecret       string
+	RedirectURI        string
+	AuthServerURL      string
+	AuthServerTokenURL string
+	Scope              string
 }
 
 func Load() *Config {
@@ -25,10 +26,11 @@ func Load() *Config {
 		log.Println("No .env file, using system env")
 	}
 	return &Config{
-		ClientId:      os.Getenv("CLIENT_ID"),
-		ClientSecret:  os.Getenv("CLIENT_SECRET"),
-		RedirectURI:   os.Getenv("REDIRECT_URI"),
-		AuthServerURL: os.Getenv("AUTH_SERVER_URL"),
-		Scope:         os.Getenv("SCOPE"),
+		ClientId:           os.Getenv("CLIENT_ID"),
+		ClientSecret:       os.Getenv("CLIENT_SECRET"),
+		RedirectURI:        os.Getenv("REDIRECT_URI"),
+		AuthServerURL:      os.Getenv("AUTH_SERVER_URL"),
+		AuthServerTokenURL: os.Getenv("AUTH_SERVER_TOKEN_URL"),
+		Scope:              os.Getenv("SCOPE"),
 	}
 }

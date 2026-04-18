@@ -22,16 +22,11 @@ type Server struct {
 func (s *Server) Callback(c *gin.Context) {
 	code := c.Query("code")
 	state := c.Query("state")
-	logrus.WithFields(logrus.Fields{
-		"state": state,
-		"code":  code,
-	}).Info("Code and state received!")
-	if code == "" {
-		c.String(http.StatusBadRequest, "Error: No code returned")
+
+	if code == "" || state == "" {
+		c.String(http.StatusBadRequest, "Error: No code or state returned")
 		return
 	}
-	// Back channel token exchange
-	tokenServerURL := "http://localhost:8080/token"
 
 	// prepare the form data to send to the Auth Server
 	formData := url.Values{}
@@ -40,30 +35,48 @@ func (s *Server) Callback(c *gin.Context) {
 	formData.Set("redirect_uri", s.Config.RedirectURI)
 	formData.Set("client_id", s.Config.ClientId)
 	formData.Set("client_secret", s.Config.ClientSecret)
-	logrus.WithFields(logrus.Fields{
-		"event": "token_exchange_start",
-		"url":   tokenServerURL,
-	}).Info("Exchanging code for access token via back-channel")
 
 	// perform the hidden server to server post request
-	resp, err := http.PostForm(tokenServerURL, formData)
+	s.Logger.WithFields(map[string]any{
+		"url":    s.Config.AuthServerTokenURL,
+		"method": "POST",
+		"form":   formData.Encode(),
+	}).Info("Calling token endpoint")
+
+	resp, err := http.PostForm(s.Config.AuthServerTokenURL, formData)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to connect to the token endpoint")
+		return
 	}
 	defer resp.Body.Close()
 
-	logrus.WithField("http_statuscode", resp.StatusCode).Info("Received token")
-
-	// 1. Read the body
 	bodyBytes, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		s.Logger.WithFields(map[string]any{
+			"status": resp.StatusCode,
+			"url":    s.Config.AuthServerTokenURL,
+			"body":   string(bodyBytes),
+		}).Error("Token endpoint returned non 200 response")
+
+		c.JSON(resp.StatusCode, gin.H{
+			"error":       "token_request_failed",
+			"status_code": resp.StatusCode,
+			"response":    string(bodyBytes),
+		})
+		return
+	}
 
 	// 2. Parse JSON into a map
 	var body map[string]any
 	if err := json.Unmarshal(bodyBytes, &body); err != nil {
-		logrus.WithError(err).Error("Body was not valid JSON")
+		logrus.WithError(err).Error("Body was not valid JSON: ")
+		c.JSON(400, gin.H{
+			"error":   "invalid_request",
+			"message": "Request body is not valid JSON",
+			"body":    body,
+		})
+		return
 	}
-
-	logrus.WithFields(body).Info("Token received")
 
 	// Save the token
 	// Store it (for now, in our global variable)
@@ -86,7 +99,6 @@ func (s *Server) Authorize(c *gin.Context) {
 		c.String(http.StatusInternalServerError, "Error: Forming AuthURL")
 		return
 	}
-	s.Logger.Info("Redirecting user to authorization server")
 	c.Redirect(http.StatusFound, authURL)
 }
 
@@ -137,7 +149,7 @@ func main() {
 	router.GET("/authorize", server.Authorize)
 	router.GET("/fetch-protected-resource", server.FetchProtectedResource)
 
-	server.Logger.Info("Server started on :9000")
+	server.Logger.Info("--------- Server started on :9000 ---------- ")
 
 	router.Run(":9000")
 
