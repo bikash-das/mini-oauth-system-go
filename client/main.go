@@ -103,31 +103,28 @@ func (s *Server) Authorize(c *gin.Context) {
 }
 
 func (s *Server) FetchProtectedResource(c *gin.Context) {
-	// if client.AccessToken == "" {
-	// 	c.String(401, "No token available. Please /authorize first.")
-	// 	return
-	// }
-	// // Access token present.
-	// // create new http request
-	// req, _ := http.NewRequest("GET", "http://localhost:8080/resource", nil)
-	// req.Header.Set("Authorization", "Bearer "+.AccessToken)
-	// resp, err := http.DefaultClient.Do(req)
-	// if err != nil {
-	// 	logrus.WithError(err).Error("Error fetching resource with new access token")
-	// 	c.String(http.StatusInternalServerError, "Error reaching resource server")
-	// 	return
-	// }
-	// defer resp.Body.Close()
-	// logrus.Info("Request for resource completed with status", resp.StatusCode)
+	accessToken := "very-unsafe-access-token" // after /token store this somewhere safe.
+	// userA : accesstoken - then access the resource.
+	// create new http request
+	req, _ := http.NewRequest("GET", "http://localhost:8080/resource", nil)
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		logrus.WithError(err).Error("Error fetching resource with new access token")
+		c.String(http.StatusInternalServerError, "Error reaching resource server")
+		return
+	}
+	defer resp.Body.Close()
+	logrus.Info("Request for resource completed with status", resp.StatusCode)
 
-	// data, _ := io.ReadAll(resp.Body)
-	// var bodyMap map[string]any
-	// if err := json.Unmarshal(data, &bodyMap); err != nil {
-	// 	c.String(500, "Invliad response while accessing protected resource")
-	// 	return
-	// }
-	// logrus.WithFields(bodyMap)
-	//c.IndentedJSON(http.StatusOK, bodyMap)
+	data, _ := io.ReadAll(resp.Body)
+	var bodyMap map[string]any
+	if err := json.Unmarshal(data, &bodyMap); err != nil {
+		c.String(500, "Invliad response while accessing protected resource")
+		return
+	}
+	logrus.WithFields(bodyMap)
+	c.IndentedJSON(http.StatusOK, bodyMap)
 	c.String(200, "")
 }
 

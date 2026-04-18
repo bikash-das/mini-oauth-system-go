@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/bikash-das/mini-oauth-system-go/pkg/config"
 	"github.com/bikash-das/mini-oauth-system-go/pkg/logger"
@@ -82,7 +83,22 @@ func (s *Server) Token(c *gin.Context) {
 func (s *Server) Resource(c *gin.Context) {
 	// Validate
 	header := c.GetHeader("Authorization")
+	fmt.Println(header)
 	logrus.Info("header: ", header)
+	if header == "" {
+		c.IndentedJSON(401, gin.H{"message": "Access denied"})
+		return
+	}
+	accessToken := strings.Split(header, "Bearer ")[1]
+	fmt.Println(accessToken)
+	fmt.Println("-------------")
+	if accessToken != "very-unsafe-access-token" {
+		c.IndentedJSON(401, gin.H{"message": "Invalid access token"})
+		return
+	}
+	// todo: Access token valid: We also need to check the scope before accessing the
+	// todo resource
+	// todo check if token is expired.
 	c.IndentedJSON(200, map[string]any{
 		"resource_type": "Protected",
 	})
