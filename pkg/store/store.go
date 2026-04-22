@@ -3,8 +3,8 @@ package store
 import "sync"
 
 type Store struct {
-	// Add mutex to make it concurrency safe and it's fast
-	// as both sits right next to each other in memory layout
+	// cred holds the in-memory data store
+	// mu protects concurrent access to cred
 	cred map[string]map[string]any
 	mu   sync.RWMutex
 }

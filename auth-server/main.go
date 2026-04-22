@@ -96,7 +96,7 @@ func (s *Server) Token(c *gin.Context) {
 		return
 	}
 	if actualCode != code {
-		c.String(401, fmt.Sprintf("code didn't match. Provided: %s and Actual: %s", code, actualCode))
+		c.String(401, fmt.Sprintf("invalid code value. Provided: %s and Actual: %s", code, actualCode))
 		return
 	}
 	// redirect_uri check: same app that requested code is redeeming it.
