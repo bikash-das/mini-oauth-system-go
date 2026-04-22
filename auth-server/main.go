@@ -6,6 +6,7 @@ import (
 
 	"github.com/bikash-das/mini-oauth-system-go/pkg/config"
 	"github.com/bikash-das/mini-oauth-system-go/pkg/logger"
+	"github.com/bikash-das/mini-oauth-system-go/pkg/store"
 	"github.com/bikash-das/mini-oauth-system-go/pkg/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
@@ -15,26 +16,33 @@ type Server struct {
 	Logger *logrus.Logger
 	Config *config.Config
 	Router *gin.Engine
+	Store  *store.Store
 }
 
 func (s *Server) Authorize(c *gin.Context) {
 	redirectUrl := c.Query("redirect_uri")
 	state := c.Query("state")
-
+	clientId := c.Query("client_id")
+	scope := c.Query("scope")
 	// todo: Show login page here.
-	// * For now we jsut send the user back with a fake code.
-	code := "bik123"
+
+	code, _ := utils.GenerateRandomCode(6)
 	params := map[string]string{
 		"code":  code,
 		"state": state,
 	}
 	target, _ := utils.BuildURL(redirectUrl, params)
+	// store in db
+	s.Store.Set(clientId, map[string]any{
+		"state": state, "scope": scope, "code": code, "redirectUrl": redirectUrl})
+
 	s.Logger.Info("Redirecting to ", target)
 	// Proof that user is authenticated, but no access token is given.
 	// So it redirects the users to the /callback uri with the code,
 	// so that the client can request for token using the code and
 	// also verify the state value
 	// Server to Server communication.
+
 	c.Redirect(302, target)
 }
 
@@ -75,8 +83,22 @@ func (s *Server) Token(c *gin.Context) {
 		})
 	}
 
-	// code check: proof that user authenticated earlier.
+	data, contains := s.Store.Get(clientID)
+	if !contains {
+		c.String(401, "Please authorize yourself first.")
+		return
+	}
 
+	// code check: proof that user authenticated earlier.
+	actualCode, ok := data["code"].(string) // assert it's a string
+	if !ok {
+		c.String(500, "invalid code format")
+		return
+	}
+	if actualCode != code {
+		c.String(401, fmt.Sprintf("code didn't match. Provided: %s and Actual: %s", code, actualCode))
+		return
+	}
 	// redirect_uri check: same app that requested code is redeeming it.
 
 	// client secret check: the client itself and not the user.
@@ -149,11 +171,13 @@ func main() {
 
 	cfg := config.Load()
 	log := logger.New()
+	store := store.NewStore()
 
 	server := &Server{
 		Config: cfg,
 		Logger: log,
 		Router: r,
+		Store:  store,
 	}
 
 	r.GET("/authorize", server.Authorize)
